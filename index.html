@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HSE English Exam Prep - Grammar & Reading</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <h1>📚 HSE English Exam Preparation</h1>
+            <p class="subtitle">Grammar & Reading Practice for Independent Exam</p>
+        </div>
+    </header>
+
+    <nav class="navigation">
+        <div class="container">
+            <button class="nav-btn active" data-section="home">Home</button>
+            <button class="nav-btn" data-section="grammar">Grammar</button>
+            <button class="nav-btn" data-section="reading">Reading</button>
+            <button class="nav-btn" data-section="progress">Progress</button>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <!-- Home Section -->
+        <section id="home" class="section active">
+            <div class="container">
+                <div class="welcome-card">
+                    <h2>Welcome to Your Exam Prep Portal</h2>
+                    <p>This platform will help you prepare for the HSE Independent English Exam with focused practice on:</p>
+                    <ul class="features-list">
+                        <li>✅ Grammar exercises (Tenses, Conditionals, Passive Voice, etc.)</li>
+                        <li>✅ Reading comprehension tasks</li>
+                        <li>✅ Instant feedback and explanations</li>
+                        <li>✅ Progress tracking</li>
+                    </ul>
+                    <div class="cta-buttons">
+                        <button class="btn btn-primary" onclick="navigateTo('grammar')">Start Grammar Practice</button>
+                        <button class="btn btn-secondary" onclick="navigateTo('reading')">Start Reading Practice</button>
+                    </div>
+                </div>
+
+                <div class="stats-overview">
+                    <div class="stat-card">
+                        <h3>Grammar Tasks</h3>
+                        <p id="grammar-completed">0</p>
+                        <span>completed</span>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Reading Tasks</h3>
+                        <p id="reading-completed">0</p>
+                        <span>completed</span>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Accuracy</h3>
+                        <p id="accuracy-rate">0%</p>
+                        <span>average</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Grammar Section -->
+        <section id="grammar" class="section">
+            <div class="container">
+                <div class="section-header">
+                    <h2>Grammar Practice</h2>
+                    <select id="grammar-topic" class="topic-selector">
+                        <option value="all">All Topics</option>
+                        <option value="tenses">Tenses</option>
+                        <option value="conditionals">Conditionals</option>
+                        <option value="passive">Passive Voice</option>
+                        <option value="articles">Articles</option>
+                        <option value="prepositions">Prepositions</option>
+                    </select>
+                </div>
+
+                <div id="grammar-task-container" class="task-container">
+                    <div class="task-card">
+                        <div class="task-header">
+                            <span class="task-badge">Grammar</span>
+                            <span id="grammar-topic-label" class="topic-label">Topic: Tenses</span>
+                        </div>
+                        <div class="task-content">
+                            <p id="grammar-question" class="question-text">Loading question...</p>
+                            <div id="grammar-options" class="options-container"></div>
+                        </div>
+                        <div class="task-footer">
+                            <button id="grammar-submit" class="btn btn-primary">Submit Answer</button>
+                            <div id="grammar-feedback" class="feedback"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="navigation-controls">
+                    <button id="grammar-prev" class="btn btn-secondary">← Previous</button>
+                    <span id="grammar-progress" class="progress-indicator">1 / 10</span>
+                    <button id="grammar-next" class="btn btn-primary">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Reading Section -->
+        <section id="reading" class="section">
+            <div class="container">
+                <div class="section-header">
+                    <h2>Reading Comprehension</h2>
+                    <select id="reading-difficulty" class="topic-selector">
+                        <option value="all">All Levels</option>
+                        <option value="intermediate">Intermediate (B1-B2)</option>
+                        <option value="advanced">Advanced (C1)</option>
+                    </select>
+                </div>
+
+                <div id="reading-task-container" class="task-container">
+                    <div class="reading-card">
+                        <div class="reading-passage">
+                            <h3 id="reading-title">Reading Passage</h3>
+                            <div id="reading-text" class="passage-text"></div>
+                        </div>
+                        <div class="reading-questions">
+                            <h4>Questions</h4>
+                            <div id="reading-questions-container"></div>
+                        </div>
+                        <div class="task-footer">
+                            <button id="reading-submit" class="btn btn-primary">Submit Answers</button>
+                            <div id="reading-feedback" class="feedback"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="navigation-controls">
+                    <button id="reading-prev" class="btn btn-secondary">← Previous</button>
+                    <span id="reading-progress" class="progress-indicator">1 / 5</span>
+                    <button id="reading-next" class="btn btn-primary">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Progress Section -->
+        <section id="progress" class="section">
+            <div class="container">
+                <h2>Your Progress</h2>
+                <div class="progress-details">
+                    <div class="progress-chart">
+                        <canvas id="progress-chart"></canvas>
+                    </div>
+                    <div class="progress-stats">
+                        <div class="stat-row">
+                            <span>Total Grammar Tasks:</span>
+                            <strong id="total-grammar">0</strong>
+                        </div>
+                        <div class="stat-row">
+                            <span>Grammar Correct:</span>
+                            <strong id="correct-grammar">0</strong>
+                        </div>
+                        <div class="stat-row">
+                            <span>Total Reading Tasks:</span>
+                            <strong id="total-reading">0</strong>
+                        </div>
+                        <div class="stat-row">
+                            <span>Reading Correct:</span>
+                            <strong id="correct-reading">0</strong>
+                        </div>
+                        <button id="reset-progress" class="btn btn-danger">Reset Progress</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 HSE English Exam Prep. Good luck with your studies!</p>
+        </div>
+    </footer>
+
+    <script src="data/grammar-data.js"></script>
+    <script src="data/reading-data.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
