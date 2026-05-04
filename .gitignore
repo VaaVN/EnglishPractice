@@ -1,7 +1,1 @@
-```
-# Build artifacts
-css/style.css
-js/app.js
-data/grammar-data.js
-data/reading-data.js
-```
+(index.html is a source file, so output nothing)
