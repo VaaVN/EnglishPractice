@@ -7,7 +7,8 @@ const state = {
     selectedReadingAnswers: {},
     progress: {
         grammar: { total: 0, correct: 0 },
-        reading: { total: 0, correct: 0 }
+        reading: { total: 0, correct: 0 },
+        writing: { essaysChecked: 0 }
     }
 };
 
@@ -17,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupNavigation();
     setupGrammarSection();
     setupReadingSection();
+    setupWritingIntegration();
     updateStatsDisplay();
 });
 
@@ -34,6 +36,8 @@ function navigateTo(section) {
         loadGrammarTask();
     } else if (section === 'reading') {
         loadReadingTask();
+    } else if (section === 'writing') {
+        // Writing section is self-contained in writing-service.js
     } else if (section === 'progress') {
         updateProgressDisplay();
     }
@@ -316,7 +320,13 @@ function updateStatsDisplay() {
     document.getElementById('grammar-completed').textContent = state.progress.grammar.total;
     document.getElementById('reading-completed').textContent = state.progress.reading.total;
     
-    const totalTasks = state.progress.grammar.total + state.progress.reading.total;
+    // Update writing stats if element exists
+    const writingEl = document.getElementById('writing-completed');
+    if (writingEl) {
+        writingEl.textContent = state.progress.writing.essaysChecked;
+    }
+    
+    const totalTasks = state.progress.grammar.total + state.progress.reading.total + state.progress.writing.essaysChecked;
     const totalCorrect = state.progress.grammar.correct + state.progress.reading.correct;
     const accuracy = totalTasks > 0 ? Math.round((totalCorrect / totalTasks) * 100) : 0;
     document.getElementById('accuracy-rate').textContent = `${accuracy}%`;
@@ -334,7 +344,8 @@ document.getElementById('reset-progress')?.addEventListener('click', () => {
     if (confirm('Are you sure you want to reset all your progress?')) {
         state.progress = {
             grammar: { total: 0, correct: 0 },
-            reading: { total: 0, correct: 0 }
+            reading: { total: 0, correct: 0 },
+            writing: { essaysChecked: 0 }
         };
         saveProgress();
         updateStatsDisplay();
@@ -342,6 +353,18 @@ document.getElementById('reset-progress')?.addEventListener('click', () => {
         alert('Progress has been reset!');
     }
 });
+
+// Writing Section Integration
+function setupWritingIntegration() {
+    // Listen for writing progress updates from WritingService
+    window.addEventListener('writing-progress-update', (e) => {
+        if (e.detail && e.detail.action === 'essay_checked') {
+            state.progress.writing.essaysChecked++;
+            saveProgress();
+            updateStatsDisplay();
+        }
+    });
+}
 
 // Make navigateTo available globally
 window.navigateTo = navigateTo;

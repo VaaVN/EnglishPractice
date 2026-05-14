@@ -19,6 +19,7 @@
             <button class="nav-btn active" data-section="home">Home</button>
             <button class="nav-btn" data-section="grammar">Grammar</button>
             <button class="nav-btn" data-section="reading">Reading</button>
+            <button class="nav-btn" data-section="writing">Writing</button>
             <button class="nav-btn" data-section="progress">Progress</button>
         </div>
     </nav>
@@ -52,6 +53,11 @@
                         <h3>Reading Tasks</h3>
                         <p id="reading-completed">0</p>
                         <span>completed</span>
+                    </div>
+                    <div class="stat-card writing-stat-card">
+                        <h3>Essays Checked</h3>
+                        <p id="writing-completed">0</p>
+                        <span>essays</span>
                     </div>
                     <div class="stat-card">
                         <h3>Accuracy</h3>
@@ -147,6 +153,60 @@
             </div>
         </section>
 
+        <!-- Writing Section -->
+        <section id="writing" class="section">
+            <div class="container">
+                <div class="section-header">
+                    <h2>Writing Practice</h2>
+                    <p style="color: #666; font-size: 0.95rem;">Practice IELTS-style essays with AI-powered feedback</p>
+                </div>
+
+                <div class="writing-section">
+                    <!-- Sidebar with topics and API key -->
+                    <aside class="writing-sidebar">
+                        <div class="api-key-section">
+                            <h4>🔑 Qwen API Key</h4>
+                            <p style="font-size: 0.8rem; color: #666; margin-bottom: 10px;">Enter your DashScope API key for AI checking. Key is stored securely in Base64.</p>
+                            <div class="api-key-input-group">
+                                <input type="password" id="api-key-input" placeholder="Enter API key...">
+                                <button id="api-key-save" class="btn btn-primary btn-small">Save</button>
+                            </div>
+                            <span id="api-key-status" class="api-status warning">⚠ Demo mode active (no API key)</span>
+                        </div>
+
+                        <div id="writing-topics-list">
+                            <!-- Topics will be rendered here by JS -->
+                        </div>
+                    </aside>
+
+                    <!-- Main writing area -->
+                    <main class="writing-main">
+                        <div class="selected-topic-container">
+                            <h4>Selected Topic:</h4>
+                            <p id="selected-topic-display">Select a topic from the list to start writing...</p>
+                        </div>
+
+                        <div class="essay-editor-container" id="essay-editor-container">
+                            <textarea id="essay-textarea" placeholder="Start writing your essay here... Minimum 250 words recommended for IELTS practice."></textarea>
+                        </div>
+
+                        <button id="check-essay-btn" class="btn btn-primary">Check with AI</button>
+
+                        <div id="check-results">
+                            <!-- Results will be displayed here -->
+                        </div>
+
+                        <div class="essay-history-section">
+                            <h3>📝 Essay History</h3>
+                            <div id="essay-history-list">
+                                <!-- History items will be rendered here -->
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            </div>
+        </section>
+
         <!-- Progress Section -->
         <section id="progress" class="section">
             <div class="container">
@@ -187,6 +247,7 @@
 
     <script src="data/grammar-data.js"></script>
     <script src="data/reading-data.js"></script>
+    <script src="js/writing-service.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>
