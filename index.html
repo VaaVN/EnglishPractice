@@ -19,6 +19,7 @@
             <button class="nav-btn active" data-section="home">Home</button>
             <button class="nav-btn" data-section="grammar">Grammar</button>
             <button class="nav-btn" data-section="reading">Reading</button>
+            <button class="nav-btn" data-section="writing">Writing</button>
             <button class="nav-btn" data-section="progress">Progress</button>
         </div>
     </nav>
@@ -52,6 +53,11 @@
                         <h3>Reading Tasks</h3>
                         <p id="reading-completed">0</p>
                         <span>completed</span>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Writing Tasks</h3>
+                        <p id="writing-completed">0</p>
+                        <span>essays saved</span>
                     </div>
                     <div class="stat-card">
                         <h3>Accuracy</h3>
@@ -139,6 +145,15 @@
             </div>
         </section>
 
+        <!-- Writing Section -->
+        <section id="writing" class="section">
+            <div class="container">
+                <div id="writing-content">
+                    <!-- Writing module content will be loaded here -->
+                </div>
+            </div>
+        </section>
+
         <!-- Progress Section -->
         <section id="progress" class="section">
             <div class="container">
@@ -179,6 +194,9 @@
 
     <script src="data/grammar-data.js"></script>
     <script src="data/reading-data.js"></script>
+    <script src="data/writing-data.js"></script>
+    <script src="js/ai-service.js"></script>
+    <script src="js/writing-module.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>
