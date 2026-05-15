@@ -160,7 +160,7 @@ async function handleCheckEssay() {
 }
 
 async function callGeminiAI(text, topic) {
-    const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + currentApiKey;
+    const url = 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent?key=' + currentApiKey;
 
     const escapedText = text.replace(/"/g, '\\"');
     
