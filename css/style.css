@@ -672,7 +672,7 @@ body {
     cursor: pointer;
     transition: all 0.3s ease;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 10px;
     flex-wrap: wrap;
 }
@@ -680,6 +680,23 @@ body {
 .error-summary-item:hover {
     background: #f0f0ff;
     transform: translateX(5px);
+}
+
+.error-details {
+    flex: 1;
+    min-width: 200px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.error-explanation {
+    font-size: 0.85rem;
+    color: #666;
+    margin: 4px 0 0 0;
+    line-height: 1.4;
+    font-style: italic;
+    padding-left: 0;
 }
 
 .error-original {
@@ -697,6 +714,11 @@ body {
     padding: 5px 12px;
     font-size: 0.8rem;
     margin-left: auto;
+    align-self: flex-start;
+}
+
+.fix-btn {
+    white-space: nowrap;
 }
 
 .loading-spinner {
