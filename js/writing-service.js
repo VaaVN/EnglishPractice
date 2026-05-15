@@ -421,25 +421,60 @@ const WritingService = (function() {
         }
     }
 
-    // Generate demo errors based on actual text - ONLY real spelling/grammar mistakes
+    // Generate demo errors based on actual text - STRICT mode finding ALL errors
     function generateDemoErrorsForText(text) {
         const errors = [];
         const words = text.split(' ');
         const wordCount = text.trim().split(/\s+/).length;
+        const topic = essayTopics.find(t => t.id === currentTopicId);
+        const topicText = topic ? topic.topic.toLowerCase() : '';
 
         // Check word count first - IELTS Task 2 requires 250+ words
         if (wordCount < 250) {
             errors.push({
                 original_text: `Word count: ${wordCount} words`,
                 suggestion: `Write at least 250 words (currently ${wordCount})`,
-                explanation: `Task Response: IELTS Writing Task 2 requires minimum 250 words. Your essay has only ${wordCount} words. This will significantly lower your score. Add more developed ideas, examples, and explanations.`,
+                explanation: `Task Response: IELTS Writing Task 2 requires minimum 250 words. Your essay has only ${wordCount} words. This will significantly lower your score (likely Band 5 or below for Task Response). Add more developed ideas, examples, and explanations.`,
                 start_index: 0,
                 end_index: 0,
                 error_type: "word_count"
             });
         }
 
-        // Find common REAL mistakes in the text - ONLY actual errors, NO style suggestions
+        // Check for completely nonsensical sentences FIRST - these are critical errors
+        const nonsensePhrases = [
+            { pattern: /i\s+poop/gi, explanation: "CRITICAL ERROR: This sentence is completely nonsensical. 'Poop' means feces/excrement. You probably meant 'people'. This makes your writing incomprehensible and would result in a very low score (Band 3-4)." },
+            { pattern: /likeing/gi, explanation: "Spelling error: 'likeing' should be 'liking'. When adding -ing to a verb ending in -e, drop the -e first. This is a basic spelling mistake." },
+            { pattern: /being\s+yesterday/gi, explanation: "Grammar/Meaning error: 'being yesterday' is not a valid construction. This phrase makes no logical sense. You cannot use 'being' this way with time expressions." },
+            { pattern: /\bi\s+am\s+agree\b/gi, explanation: "Grammar error: 'I am agree' is incorrect. Use 'I agree' (verb) or 'I am in agreement' (noun phrase). This is a fundamental grammar mistake." },
+            { pattern: /\bthere\s+is\s+many\b/gi, explanation: "Grammar error: Subject-verb agreement. 'Many' is plural, so use 'there are many' not 'there is many'." },
+            { pattern: /\bpeoples\b/gi, explanation: "Grammar error: 'People' is already the plural of 'person'. 'Peoples' only refers to ethnic groups/nations. For individuals, use 'people'." },
+            { pattern: /\badvices\b/gi, explanation: "Grammar error: 'Advice' is an uncountable noun. You cannot say 'advices'. Use 'some advice' or 'pieces of advice'." },
+            { pattern: /\binformations\b/gi, explanation: "Grammar error: 'Information' is uncountable. You cannot say 'informations'. Use 'some information' or 'pieces of information'." },
+            { pattern: /\bmore\s+better\b/gi, explanation: "Grammar error: 'Better' is already the comparative form. 'More better' is double comparative. Just use 'better'." },
+            { pattern: /\bmost\s+best\b/gi, explanation: "Grammar error: 'Best' is already superlative. 'Most best' is incorrect. Just use 'best'." },
+            { pattern: /\bvery\s+unique\b/gi, explanation: "Vocabulary error: 'Unique' means one of a kind - it cannot be modified by 'very'. Something is either unique or not. Use 'truly unique' or 'very unusual'." },
+            { pattern: /\bhe\s+go\b(?!es|ing|to)/gi, explanation: "Grammar error: Third person singular requires 'goes'. 'He go' is incorrect. Use 'He goes'." },
+            { pattern: /\bshe\s+have\b(?! got|to)/gi, explanation: "Grammar error: Third person singular requires 'has'. 'She have' is incorrect. Use 'She has'." },
+            { pattern: /\bthey\s+was\b/gi, explanation: "Grammar error: 'They' is plural and requires 'were', not 'was'. Use 'They were'." },
+            { pattern: /\bi\s+was\b(?! going|doing|thinking|waiting|working|studying|living|staying|playing|reading|writing|eating|sleeping|talking|listening|watching|learning|teaching|cooking|cleaning|running|walking|driving|riding|flying|swimming|dancing|singing|crying|laughing|smiling|looking|seeing|hearing|feeling|touching|tasting|smelling|knowing|understanding|believing|remembering|forgetting|wanting|needing|liking|loving|hating|preferring|choosing|deciding|planning|hoping|expecting|wishing|dreaming|imagining|considering|suggesting|recommending|advising|warning|promising|threatening|refusing|agreeing|disagreeing|accepting|rejecting|approving|disapproving|allowing|forbidding|permitting|encouraging|discouraging|insisting|demanding|requesting|asking|answering|replying|responding|explaining|describing|narrating|telling|speaking|saying|mentioning|noting|observing|remarking|commenting|stating|declaring|announcing|proclaiming|reporting|confirming|denying|admitting|confessing|acknowledging|recognizing|realizing|discovering|finding|detecting|identifying|locating|searching|seeking|hunting|chasing|following|pursuing|tracking|tracing|investigating|examining|inspecting|checking|testing|trying|attempting|experimenting|practicing|training|exercising|working|laboring|toiling|struggling|striving|endeavoring|trying|attempting)/gi, explanation: "Grammar error: 'I was' must be followed by a verb in -ing form (past continuous) or used in passive voice. Check your sentence structure." }
+        ];
+
+        nonsensePatterns.forEach(({ pattern, explanation }) => {
+            let match;
+            while ((match = pattern.exec(text)) !== null) {
+                errors.push({
+                    original_text: match[0],
+                    suggestion: "[This is a serious error]",
+                    explanation: explanation,
+                    start_index: match.index,
+                    end_index: match.index + match[0].length,
+                    error_type: ["poop", "likeing", "being"].some(w => match[0].toLowerCase().includes(w)) ? "meaning" : "grammar"
+                });
+            }
+        });
+
+        // Find common REAL spelling mistakes
         const commonMistakes = {
             'teh': 'the',
             'dont': "don't",
@@ -456,25 +491,27 @@ const WritingService = (function() {
             'wierd': "weird",
             'freind': "friend",
             'likeing': "liking",
-            'poop': "people"
+            'poop': "people (if you meant humans)"
         };
 
         let currentIndex = 0;
-        words.forEach((word, index) => {
-            const lowerWord = word.toLowerCase().replace(/[^a-z]/g, '');
+        words.forEach((word) => {
+            const cleanWord = word.toLowerCase().replace(/[^a-z]/g, '');
+            if (!cleanWord) return;
 
-            // Check for common spelling mistakes ONLY - no style suggestions
-            if (commonMistakes[lowerWord]) {
+            if (commonMistakes[cleanWord]) {
                 const wordIndex = text.indexOf(word, currentIndex);
-                errors.push({
-                    original_text: word,
-                    suggestion: commonMistakes[lowerWord],
-                    explanation: `Spelling/Grammar error: '${lowerWord}' should be '${commonMistakes[lowerWord]}'`,
-                    start_index: wordIndex,
-                    end_index: wordIndex + word.length,
-                    error_type: "spelling"
-                });
-                currentIndex = wordIndex + word.length;
+                if (wordIndex !== -1) {
+                    errors.push({
+                        original_text: word,
+                        suggestion: commonMistakes[cleanWord],
+                        explanation: `Spelling error: '${cleanWord}' should be '${commonMistakes[cleanWord]}'. This is a basic spelling mistake that affects your Lexical Resource score.`,
+                        start_index: wordIndex,
+                        end_index: wordIndex + word.length,
+                        error_type: "spelling"
+                    });
+                    currentIndex = wordIndex + word.length;
+                }
             }
         });
 
@@ -492,38 +529,61 @@ const WritingService = (function() {
         grammarPatterns.forEach(({ pattern, suggestion, explanation }) => {
             let match;
             while ((match = pattern.exec(text)) !== null) {
-                errors.push({
-                    original_text: match[0],
-                    suggestion: suggestion,
-                    explanation: explanation,
-                    start_index: match.index,
-                    end_index: match.index + match[0].length,
-                    error_type: "grammar"
-                });
+                // Avoid duplicates
+                if (!errors.some(e => e.start_index === match.index)) {
+                    errors.push({
+                        original_text: match[0],
+                        suggestion: suggestion,
+                        explanation: explanation,
+                        start_index: match.index,
+                        end_index: match.index + match[0].length,
+                        error_type: "grammar"
+                    });
+                }
             }
         });
 
-        // Check for nonsensical sentences (demo mode heuristic)
-        const nonsensePatterns = [
-            { pattern: /\bi\s+poop\s+likeing\b/gi, suggestion: "[This sentence makes no sense]", explanation: "Meaning/Coherence error: This sentence is completely nonsensical and does not convey any logical meaning. The words don't form a coherent thought." },
-            { pattern: /\bbeing\s+yesterday\b/gi, suggestion: "[Remove or rephrase]", explanation: "Grammar/Meaning error: 'being yesterday' is not a valid grammatical construction. This phrase doesn't make logical sense." }
-        ];
-
-        nonsensePatterns.forEach(({ pattern, suggestion, explanation }) => {
-            let match;
-            while ((match = pattern.exec(text)) !== null) {
+        // CRITICAL: Check if essay is relevant to the topic
+        if (topicText && wordCount > 5) {
+            const topicKeywords = topicText.split(/\s+/).filter(w => w.length > 3);
+            const textLower = text.toLowerCase();
+            
+            // Count how many topic keywords appear in the essay
+            let matchCount = 0;
+            topicKeywords.forEach(keyword => {
+                if (textLower.includes(keyword)) {
+                    matchCount++;
+                }
+            });
+            
+            // If less than 30% of topic keywords appear, flag as potentially off-topic
+            const matchRatio = matchCount / topicKeywords.length;
+            if (matchRatio < 0.3 && matchCount < 3) {
                 errors.push({
-                    original_text: match[0],
-                    suggestion: suggestion,
-                    explanation: explanation,
-                    start_index: match.index,
-                    end_index: match.index + match[0].length,
-                    error_type: "meaning"
+                    original_text: "[Entire essay]",
+                    suggestion: "Address the given topic directly",
+                    explanation: `Task Response/Relevance: CRITICAL ERROR - Your essay does not appear to address the topic: "${topic.topic}". Only ${matchCount} out of ${topicKeywords.length} key words from the topic appear in your essay. This suggests you may be writing about a completely different subject. An off-topic essay receives Band 4 or below for Task Response regardless of language quality.`,
+                    start_index: 0,
+                    end_index: Math.min(50, text.length),
+                    error_type: "relevance"
                 });
             }
-        });
+        }
 
-        return errors.slice(0, 15); // Limit to 15 errors for demo
+        // Check for very short essays (less than 100 words is critical)
+        if (wordCount < 100 && wordCount >= 1) {
+            errors.push({
+                original_text: `[${wordCount} words total]`,
+                suggestion: "Write a full essay with introduction, body paragraphs, and conclusion",
+                explanation: `Task Response: CRITICAL - Your essay is extremely short (${wordCount} words). A proper IELTS Task 2 essay needs at least 250 words with multiple paragraphs. Essays under 100 words cannot adequately address the task and will receive Band 3-4 maximum.`,
+                start_index: 0,
+                end_index: 0,
+                error_type: "task_response"
+            });
+        }
+
+        // Return all found errors (no artificial limit)
+        return errors;
     }
 
     // Call Qwen API
