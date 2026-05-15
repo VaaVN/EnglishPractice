@@ -1,5 +1,8 @@
 // Writing Service Module
-// Handles essay writing practice with AI-powered checking via Qwen API
+// Handles essay writing practice with AI-powered checking via Google Gemini API
+
+// Global variable for API key (not saved to localStorage, cleared on page refresh)
+let userApiKey = null;
 
 const WritingService = (function() {
     // Essay topics data
@@ -87,7 +90,8 @@ const WritingService = (function() {
     let currentTopicId = null;
     let currentEssayText = '';
     let detectedErrors = [];
-    let apiKey = null;
+    // API Key stored only in memory (cleared on page refresh) - using global variable from main scope
+    // userApiKey is defined globally to be accessible by callQwenAPI
 
     // Initialize the writing section
     function init() {
@@ -100,11 +104,11 @@ const WritingService = (function() {
     // API Key management - stored only in memory (cleared on page refresh)
     function saveApiKey(key) {
         if (!key || key.trim() === '') {
-            apiKey = null;
+            userApiKey = null;
             return false;
         }
         try {
-            apiKey = key;
+            userApiKey = key.trim();
             return true;
         } catch (e) {
             console.error('Error setting API key:', e);
@@ -114,16 +118,16 @@ const WritingService = (function() {
 
     function loadApiKey() {
         // Don't load from localStorage - key must be entered each session
-        apiKey = null;
+        userApiKey = null;
         return null;
     }
 
     function getApiKey() {
-        return apiKey;
+        return userApiKey;
     }
 
     function isDemoMode() {
-        return !apiKey || apiKey.trim() === '';
+        return !userApiKey || userApiKey.trim() === '';
     }
 
     // Render topic selection list
