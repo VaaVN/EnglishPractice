@@ -1,1 +1,1 @@
-(js/writing-service.js - this is a source file, not a build artifact or dependency, so no need for .gitignore rules)
+(js/writing-service.js)
