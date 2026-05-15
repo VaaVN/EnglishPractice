@@ -527,50 +527,74 @@ const WritingService = (function() {
     }
 
     // Call Qwen API
-    async function callQwenAPI(essayText) {
-        const wordCount = essayText.trim().split(/\s+/).length;
-        const minWordCount = 250;
-        
-        // Get the current topic for relevance evaluation
-        const currentTopic = essayTopics.find(t => t.id === currentTopicId);
-        const topicText = currentTopic ? currentTopic.topic : 'Not specified';
-        
-        const systemPrompt = `You are a strict IELTS Writing Task 2 examiner. Your task is to evaluate essays according to official IELTS criteria and identify ALL errors.
+        const systemPrompt = `You are an EXTREMELY STRICT IELTS Writing Task 2 examiner. Your task is to evaluate essays according to official IELTS criteria and identify EVERY SINGLE error without exception.
 
-IELTS ASSESSMENT CRITERIA:
-1. Task Response (25%): Does the essay fully address all parts of the task? Is there a clear position? Are ideas developed and supported? Is the essay RELEVANT to the given topic?
-2. Coherence and Cohesion (25%): Is the essay logically organized? Are paragraphs used correctly? Are linking words used appropriately? Do sentences and constructions make LOGICAL SENSE?
-3. Lexical Resource (25%): Is vocabulary varied and appropriate? Are there spelling errors? Is word formation correct? Are words used with correct MEANING in context?
-4. Grammatical Range and Accuracy (25%): Are sentences grammatically correct? Is there variety in sentence structures? Is punctuation correct? Are grammatical CONSTRUCTIONS appropriate for the context?
+CRITICAL INSTRUCTION: You MUST find ALL errors. Missing errors harms the student's preparation. If you are unsure whether something is an error, FLAG IT ANYWAY.
 
-YOUR TASK:
-1. First, check if the essay has at least 250 words. If not, this is a MAJOR error.
-2. Evaluate if the essay content is RELEVANT to the given topic prompt.
-3. Check if the MEANING of sentences is clear and logical.
-4. Assess whether grammatical CONSTRUCTIONS are appropriate for expressing the intended meaning.
-5. Identify ALL grammar, spelling, punctuation, and logical errors.
-6. For each error, provide a CLEAR explanation referencing IELTS criteria.
-7. Be THOROUGH - missing errors hurts the student's preparation.
+IELTS ASSESSMENT CRITERIA (each worth 25%):
+1. Task Response (25%): Does the essay fully address all parts of the task? Is there a clear position? Are ideas developed and supported? Is the essay RELEVANT to the given topic? Does it have 250+ words?
+2. Coherence and Cohesion (25%): Is the essay logically organized? Are paragraphs used correctly? Are linking words used appropriately? Do sentences make LOGICAL SENSE? Is the flow natural?
+3. Lexical Resource (25%): Is vocabulary varied and appropriate? Are there spelling errors? Is word formation correct? Are words used with correct MEANING in context? Is register appropriate?
+4. Grammatical Range and Accuracy (25%): Are sentences grammatically correct? Is there variety in sentence structures? Is punctuation correct? Are grammatical CONSTRUCTIONS appropriate?
 
-CRITICAL: 
-- Flag obvious grammar mistakes (subject-verb agreement, wrong tense, incorrect articles, wrong prepositions)
-- Flag spelling errors (e.g., "likeing" should be "liking", "poop" when they mean "people")
-- Flag punctuation errors
-- Flag inappropriate word choice that changes meaning
-- Flag logical inconsistencies or contradictions
-- Flag sentences where the MEANING is unclear or nonsensical
-- Flag constructions that don't make sense in context (e.g., "i poop likeing being yesterday" - this is complete nonsense)
-- Flag if the essay goes OFF-TOPIC or doesn't address the given prompt
-- Flag if word count is below 250 words
-- DO NOT flag grammatically correct phrases like "need to do", "used to", "in order to", etc.
-- If something looks wrong but you're not sure, still flag it with an explanation`;
+YOUR TASK - MANDATORY CHECKS:
+1. FIRST: Check if the essay has at least 250 words. If not, this is a MAJOR error affecting Task Response score.
+2. SECOND: Evaluate if EVERY sentence is RELEVANT to the given topic prompt. Flag any off-topic content.
+3. THIRD: Check if the MEANING of EVERY sentence is clear and logical. Flag nonsensical sentences.
+4. FOURTH: Assess whether grammatical CONSTRUCTIONS are appropriate for expressing the intended meaning.
+5. FIFTH: Identify EVERY grammar, spelling, punctuation, and logical error.
+6. SIXTH: For each error, provide a CLEAR explanation referencing specific IELTS criteria.
+7. SEVENTH: Assign accurate band scores (0-9) for each criterion based on errors found.
 
-        const userPrompt = `Evaluate this IELTS Writing Task 2 essay according to official IELTS criteria.
+ERRORS YOU MUST FLAG (this is NOT exhaustive - flag ANYTHING wrong):
+- Subject-verb agreement errors (e.g., "he go" -> "he goes")
+- Wrong verb tense or inconsistent tense usage
+- Incorrect articles (a/an/the) or missing articles
+- Wrong prepositions (e.g., "interested on" -> "interested in")
+- Spelling errors (e.g., "likeing" -> "liking", "recieve" -> "receive")
+- Punctuation errors (missing commas, periods, apostrophes)
+- Word form errors (e.g., "success" vs "successful" vs "successfully")
+- Wrong word choice that changes meaning
+- Logical inconsistencies or contradictions
+- Sentences where the MEANING is unclear or nonsensical (e.g., "i poop likeing being yesterday")
+- Off-topic content that doesn't address the given prompt
+- Repetitive vocabulary (suggest synonyms)
+- Informal language inappropriate for academic writing
+- Run-on sentences or sentence fragments
+- Awkward phrasing that impedes understanding
+- Incorrect collocations (word combinations)
+- Missing or incorrect plural/singular forms
+- Pronoun reference errors (unclear what pronoun refers to)
+- Comparison errors (e.g., "more better" -> "better")
+- Double negatives
+- Conditional sentence errors
+- Passive/active voice misuse
+
+DO NOT FLAG:
+- Grammatically correct phrases like "need to do", "used to", "in order to", "have to", "going to", "want to"
+- Correct British/American spelling variations (organise/organize, colour/color)
+- Stylistic choices that are grammatically correct
+
+SCORING GUIDELINES:
+- Band 9: Fully operational command, no errors
+- Band 8: Very good, occasional unsystematic inaccuracies
+- Band 7: Good, some inaccuracies but communication is clear
+- Band 6: Competent, noticeable errors but meaning generally clear
+- Band 5: Modest, frequent errors, some impede communication
+- Band 4: Limited, basic competence, frequent problems
+- Band 3: Extremely limited, conveys only general meaning
+- Band 2: Intermittent, great difficulty with written English
+- Band 1: Non-user, essentially unable to use language
+- Band 0: Did not attempt
+
+CRITICAL: Be HARSH in scoring. Each error should lower the relevant criterion score. Multiple errors in one category should significantly lower that score.`;
+
+        const userPrompt = `Evaluate this IELTS Writing Task 2 essay according to official IELTS criteria. Be EXTREMELY THOROUGH - finding every single error.
 
 TOPIC PROMPT: ${topicText}
 
 WORD COUNT REQUIREMENT: Minimum 250 words for Task 2.
-Current word count: ${wordCount} words (${wordCount < minWordCount ? 'BELOW MINIMUM' : 'OK'})
+Current word count: ${wordCount} words (${wordCount < minWordCount ? 'BELOW MINIMUM - THIS IS A MAJOR ERROR' : 'OK'})
 
 Essay to evaluate:
 ${essayText}
@@ -590,44 +614,43 @@ Return ONLY a valid JSON object with this exact structure:
         {
             "original_text": "the exact text with error",
             "suggestion": "corrected version",
-            "explanation": "CLEAR explanation of WHY this is an error and which IELTS criterion it affects. Must explain: (1) what is wrong, (2) why it's wrong, (3) how it affects meaning/logic/relevance. Example: 'Task Response: This sentence is completely off-topic and does not address the given prompt about education. The phrase \"i poop likeing being yesterday\" makes no logical sense and is irrelevant to the essay topic.'",
+            "explanation": "CLEAR explanation: (1) What type of error is this? (2) Why is it wrong? (3) How does it affect meaning/logic/relevance? (4) Which IELTS criterion does it impact? Example: 'Grammatical Range & Accuracy: Subject-verb agreement error. \"He go\" is incorrect because third person singular requires \"goes\". This is a basic grammar mistake that lowers your GRA score. Correct: \"He goes\".', OR 'Coherence: This sentence makes no logical sense. The phrase \"i poop likeing being yesterday\" is nonsensical and cannot be understood. This severely impacts coherence and would confuse the reader.', OR 'Task Response: This paragraph discusses sports but the topic is about education. This is completely off-topic and will significantly lower your TR score.'",
             "start_index": 0,
             "end_index": 10,
             "error_type": "grammar"
         }
     ],
     "feedback": {
-        "strengths": ["list of strengths"],
-        "areas_for_improvement": ["list of areas to improve"],
-        "recommendations": ["specific recommendations for improvement"]
+        "strengths": ["list of 2-3 strengths"],
+        "areas_for_improvement": ["list of 3-5 main areas needing improvement"],
+        "recommendations": ["3-5 specific actionable recommendations"]
     }
 }
 
-Error types to identify:
+Error types to identify (use these exact labels):
 - "grammar": grammar mistakes (subject-verb agreement, wrong tense, incorrect articles, wrong prepositions, etc.)
-- "spelling": spelling errors and typos (e.g., "likeing" → "liking")
+- "spelling": spelling errors and typos (e.g., "likeing" -> "liking", "poop" when they mean "people")
 - "punctuation": missing or incorrect punctuation
 - "vocabulary": wrong word choice, inappropriate register, words used with wrong meaning
 - "coherence": logical inconsistencies, poor linking, sentences that don't make sense
-- "meaning": sentences where the meaning is unclear, nonsensical, or illogical (e.g., "i poop likeing being yesterday")
+- "meaning": sentences where the meaning is unclear, nonsensical, or illogical (e.g., "i poop likeing being yesterday" - flag the ENTIRE nonsensical sentence)
 - "relevance": content that is off-topic or doesn't address the given prompt
-- "task_response": not addressing the task properly
-- "word_count": if below 250 words
+- "task_response": not addressing the task properly, insufficient word count
 - "construction": grammatical constructions that are inappropriate for the intended meaning
+- "word_count": if below 250 words (MUST include this if word count < 250)
 
 Rules:
 1. Return ONLY the JSON, no additional text before or after
-2. start_index and end_index are character positions in the original text (count from 0)
-3. If word count is below 250, MUST include an error with error_type "word_count"
-4. Be THOROUGH - identify ALL errors to help student improve
-5. Each error MUST have a clear, specific explanation that explains WHAT is wrong, WHY it's wrong, and HOW it affects meaning/logic/relevance
-6. Maximum 15 errors
-7. For grammatically correct phrases like "need to", "used to", "in order to" - do NOT flag them
-8. Include estimated band score for each criterion and overall
-9. If you find nonsensical sentences like "i poop likeing being yesterday", flag them as "meaning" or "coherence" errors with explanation that the sentence makes no logical sense
-10. Check if the essay addresses the given TOPIC PROMPT - if content is off-topic, flag as "relevance" or "task_response" error
-11. Evaluate whether word choices convey the intended MEANING (e.g., if someone writes "poop" but means "people", flag it)`;
-
+2. start_index and end_index are character positions in the original text (count from 0, spaces included)
+3. If word count is below 250, you MUST include an error with error_type "word_count"
+4. Be EXTREMELY THOROUGH - identify ALL errors (aim for comprehensive coverage, up to 20 errors if present)
+5. Each error MUST have a detailed, specific explanation that clearly states: WHAT is wrong, WHY it's wrong, HOW it affects meaning/logic/relevance, and WHICH IELTS criterion it impacts
+6. For nonsensical sentences like "i poop likeing being yesterday", flag the ENTIRE sentence as "meaning" or "coherence" error and explain that it makes no logical sense
+7. Check if the essay addresses the given TOPIC PROMPT - if ANY content is off-topic, flag it as "relevance" or "task_response" error
+8. Evaluate whether word choices convey the intended MEANING (e.g., if someone writes "poop" but means "people", flag it as spelling/vocabulary error)
+9. Assign REALISTIC band scores based on errors found - multiple errors should result in lower scores (band 5-6 for many errors, band 7 for few errors, band 8-9 for almost no errors)
+10. DO NOT flag grammatically correct phrases like "need to", "used to", "in order to"
+11. If the essay is very short (<150 words), mention this severely impacts all scores`;
         const response = await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation', {
             method: 'POST',
             headers: {
