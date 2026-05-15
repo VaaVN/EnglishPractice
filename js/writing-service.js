@@ -527,6 +527,12 @@ const WritingService = (function() {
     }
 
     // Call Qwen API
+    async function callQwenAPI(essayText) {
+        const topic = essayTopics.find(t => t.id === currentTopicId);
+        const topicText = topic ? topic.topic : 'Unknown topic';
+        const wordCount = essayText.trim().split(/\s+/).length;
+        const minWordCount = 250;
+        
         const systemPrompt = `You are an EXTREMELY STRICT IELTS Writing Task 2 examiner. Your task is to evaluate essays according to official IELTS criteria and identify EVERY SINGLE error without exception.
 
 CRITICAL INSTRUCTION: You MUST find ALL errors. Missing errors harms the student's preparation. If you are unsure whether something is an error, FLAG IT ANYWAY.
@@ -755,7 +761,7 @@ Rules:
         };
         
         return validErrors;
-    }
+    } // End of callQwenAPI
 
     // Display errors interactively
     function displayErrors(errors) {
