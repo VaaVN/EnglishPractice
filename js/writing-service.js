@@ -4,22 +4,67 @@
 let currentApiKey = '';
 let currentTopic = '';
 
-// DOM Elements
-const apiKeyInput = document.getElementById('api-key-input');
-const setKeyBtn = document.getElementById('set-key-btn');
-const topicSelect = document.getElementById('topic-select');
-const essayTextarea = document.getElementById('essay-textarea');
-const checkBtn = document.getElementById('check-ai-btn');
-const loadDemoBtn = document.getElementById('load-demo-btn');
-const resultsContainer = document.getElementById('ai-results');
-const scoreDisplay = document.getElementById('ielts-score');
-const feedbackList = document.getElementById('feedback-list');
-const loadingSpinner = document.getElementById('loading-spinner');
+// DOM Elements - will be initialized after DOM load
+let apiKeyInput, setKeyBtn, topicSelect, essayTextarea, checkBtn, loadDemoBtn;
+let resultsContainer, scoreDisplay, feedbackList, loadingSpinner, keyStatusSpan, topicDisplay;
 
-// Initialize
+// Writing topics data
+const writingTopics = [
+    { id: 'technology_impact', title: 'Technology: Impact on Society', prompt: 'Some people believe that technology has made our lives more complex rather than simpler. To what extent do you agree or disagree?' },
+    { id: 'education_future', title: 'Education: Future of Learning', prompt: 'Universities should accept equal numbers of male and female students in every subject. To what extent do you agree or disagree?' },
+    { id: 'environment_climate', title: 'Environment: Climate Change', prompt: 'The best way to solve environmental problems is to increase the price of fuel. Do you agree or disagree?' },
+    { id: 'health_lifestyle', title: 'Health: Modern Lifestyle', prompt: 'Prevention is better than cure. Out of a countrys health budget, a large proportion should be diverted from treatment to spending on health education and preventative measures. To what extent do you agree or disagree?' },
+    { id: 'work_career', title: 'Work: Career Choices', prompt: 'Some people prefer to work for a large company. Others believe that it is better to work for a small one. Discuss both views and give your opinion.' },
+    { id: 'media_social', title: 'Media: Social Networks', prompt: 'Social media has replaced traditional forms of communication. Do the advantages of this development outweigh the disadvantages?' }
+];
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    init();
+});
+
 function init() {
+    // Get DOM elements
+    apiKeyInput = document.getElementById('api-key-input');
+    setKeyBtn = document.getElementById('set-key-btn');
+    topicSelect = document.getElementById('topic-select');
+    essayTextarea = document.getElementById('essay-textarea');
+    checkBtn = document.getElementById('check-ai-btn');
+    loadDemoBtn = document.getElementById('load-demo-btn');
+    resultsContainer = document.getElementById('ai-results');
+    scoreDisplay = document.getElementById('ielts-score');
+    feedbackList = document.getElementById('feedback-list');
+    loadingSpinner = document.getElementById('loading-spinner');
+    keyStatusSpan = document.getElementById('key-status');
+    topicDisplay = document.getElementById('selected-topic-display');
+    
+    if (!apiKeyInput || !setKeyBtn || !topicSelect) {
+        console.error('Writing section elements not found! Check HTML IDs.');
+        return;
+    }
+    
     setupEventListeners();
+    populateTopics();
     updateKeyStatus();
+}
+
+function populateTopics() {
+    // Topics are already in HTML, but we can add event listener for selection
+    topicSelect.addEventListener('change', function() {
+        const selectedOption = topicSelect.options[topicSelect.selectedIndex];
+        if (this.value) {
+            const topicObj = writingTopics.find(t => t.id === this.value);
+            if (topicObj) {
+                currentTopic = topicObj.title;
+                topicDisplay.textContent = topicObj.prompt;
+                topicDisplay.style.color = '#333';
+            }
+        } else {
+            currentTopic = '';
+            topicDisplay.textContent = 'Select a topic from the list to start writing...';
+            topicDisplay.style.color = '#666';
+        }
+    });
 }
 
 function setupEventListeners() {
@@ -115,7 +160,7 @@ async function handleCheckEssay() {
 }
 
 async function callGeminiAI(text, topic) {
-    const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + currentApiKey;
+    const url = 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent?key=' + currentApiKey;
 
     const escapedText = text.replace(/"/g, '\\"');
     
@@ -208,4 +253,4 @@ function renderResults(score, errors, commentary) {
     resultsContainer.scrollIntoView({ behavior: 'smooth' });
 }
 
-init();
+// Remove the old init() call at the bottom since we use DOMContentLoaded

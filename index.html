@@ -165,17 +165,27 @@
                     <!-- Sidebar with topics and API key -->
                     <aside class="writing-sidebar">
                         <div class="api-key-section">
-                            <h4>🔑 Qwen API Key</h4>
-                            <p style="font-size: 0.8rem; color: #666; margin-bottom: 10px;">Enter your DashScope API key for AI checking. Key is NOT saved and will be lost on page refresh.</p>
+                            <h4>🔑 Gemini API Key</h4>
+                            <p style="font-size: 0.8rem; color: #666; margin-bottom: 10px;">Enter your Google Gemini API key for AI checking. Key is NOT saved and will be lost on page refresh.</p>
                             <div class="api-key-input-group">
                                 <input type="password" id="api-key-input" placeholder="Enter API key...">
-                                <button id="api-key-save" class="btn btn-primary btn-small">Set Key</button>
+                                <button id="set-key-btn" class="btn btn-primary btn-small">Set Key</button>
                             </div>
-                            <span id="api-key-status" class="api-status warning">⚠ Enter API Key to enable AI checking</span>
+                            <span id="key-status" class="api-status warning">⚠ Enter API Key to enable AI checking</span>
                         </div>
 
-                        <div id="writing-topics-list">
-                            <!-- Topics will be rendered here by JS -->
+                        <div class="topics-section">
+                            <h4>📝 Essay Topics</h4>
+                            <select id="topic-select" class="topic-selector">
+                                <option value="">-- Select a Topic --</option>
+                                <option value="technology_impact">Technology: Impact on Society</option>
+                                <option value="education_future">Education: Future of Learning</option>
+                                <option value="environment_climate">Environment: Climate Change</option>
+                                <option value="health_lifestyle">Health: Modern Lifestyle</option>
+                                <option value="work_career">Work: Career Choices</option>
+                                <option value="media_social">Media: Social Networks</option>
+                            </select>
+                            <button id="load-demo-btn" class="btn btn-secondary btn-small" style="margin-top: 10px; width: 100%;">Load Demo Essay (with errors)</button>
                         </div>
                     </aside>
 
@@ -190,10 +200,20 @@
                             <textarea id="essay-textarea" placeholder="Start writing your essay here... Minimum 250 words recommended for IELTS practice."></textarea>
                         </div>
 
-                        <button id="check-essay-btn" class="btn btn-primary">Check with AI</button>
+                        <button id="check-ai-btn" class="btn btn-primary">Check with AI</button>
 
-                        <div id="check-results">
-                            <!-- Results will be displayed here -->
+                        <div id="loading-spinner" style="display: none; text-align: center; padding: 20px;">
+                            <p>⏳ AI is analyzing your essay... This may take a few seconds.</p>
+                        </div>
+
+                        <div id="ai-results" style="display: none;">
+                            <div class="results-header">
+                                <h3>IELTS Score Estimate</h3>
+                                <div id="ielts-score" class="score-badge">0.0</div>
+                            </div>
+                            <div id="ai-commentary" class="ai-commentary"></div>
+                            <h4>Detected Errors & Suggestions:</h4>
+                            <ul id="feedback-list" class="feedback-list"></ul>
                         </div>
 
                         <div class="essay-history-section">
