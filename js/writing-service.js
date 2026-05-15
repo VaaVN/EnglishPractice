@@ -97,36 +97,24 @@ const WritingService = (function() {
         setupEventListeners();
     }
 
-    // API Key management with Base64 encoding
+    // API Key management - stored only in memory (cleared on page refresh)
     function saveApiKey(key) {
         if (!key || key.trim() === '') {
-            localStorage.removeItem('writing_api_key');
             apiKey = null;
             return false;
         }
         try {
-            const encoded = btoa(key);
-            localStorage.setItem('writing_api_key', encoded);
             apiKey = key;
             return true;
         } catch (e) {
-            console.error('Error encoding API key:', e);
+            console.error('Error setting API key:', e);
             return false;
         }
     }
 
     function loadApiKey() {
-        const encoded = localStorage.getItem('writing_api_key');
-        if (encoded) {
-            try {
-                apiKey = atob(encoded);
-                return apiKey;
-            } catch (e) {
-                console.error('Error decoding API key:', e);
-                localStorage.removeItem('writing_api_key');
-                apiKey = null;
-            }
-        }
+        // Don't load from localStorage - key must be entered each session
+        apiKey = null;
         return null;
     }
 
@@ -245,7 +233,7 @@ const WritingService = (function() {
                 const success = saveApiKey(key);
                 
                 if (success) {
-                    apiKeyStatus.textContent = '✓ API Key saved securely';
+                    apiKeyStatus.textContent = '✓ API Key set for this session';
                     apiKeyStatus.className = 'api-status success';
                     apiKeyInput.value = '';
                 } else {
@@ -255,15 +243,10 @@ const WritingService = (function() {
             });
         }
 
-        // Check if key exists on load
+        // Check if key exists on load - always show input field since key is not persisted
         if (apiKeyStatus) {
-            if (getApiKey()) {
-                apiKeyStatus.textContent = '✓ API Key configured';
-                apiKeyStatus.className = 'api-status success';
-            } else {
-                apiKeyStatus.textContent = '⚠ Demo mode active (no API key)';
-                apiKeyStatus.className = 'api-status warning';
-            }
+            apiKeyStatus.textContent = '⚠ Enter API Key to enable AI checking';
+            apiKeyStatus.className = 'api-status warning';
         }
 
         // Textarea auto-save
