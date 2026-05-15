@@ -456,7 +456,7 @@ const WritingService = (function() {
             'wierd': "weird",
             'freind': "friend",
             'likeing': "liking",
-            'poop': "pooped"
+            'poop': "people"
         };
 
         let currentIndex = 0;
@@ -503,6 +503,26 @@ const WritingService = (function() {
             }
         });
 
+        // Check for nonsensical sentences (demo mode heuristic)
+        const nonsensePatterns = [
+            { pattern: /\bi\s+poop\s+likeing\b/gi, suggestion: "[This sentence makes no sense]", explanation: "Meaning/Coherence error: This sentence is completely nonsensical and does not convey any logical meaning. The words don't form a coherent thought." },
+            { pattern: /\bbeing\s+yesterday\b/gi, suggestion: "[Remove or rephrase]", explanation: "Grammar/Meaning error: 'being yesterday' is not a valid grammatical construction. This phrase doesn't make logical sense." }
+        ];
+
+        nonsensePatterns.forEach(({ pattern, suggestion, explanation }) => {
+            let match;
+            while ((match = pattern.exec(text)) !== null) {
+                errors.push({
+                    original_text: match[0],
+                    suggestion: suggestion,
+                    explanation: explanation,
+                    start_index: match.index,
+                    end_index: match.index + match[0].length,
+                    error_type: "meaning"
+                });
+            }
+        });
+
         return errors.slice(0, 15); // Limit to 15 errors for demo
     }
 
@@ -511,30 +531,43 @@ const WritingService = (function() {
         const wordCount = essayText.trim().split(/\s+/).length;
         const minWordCount = 250;
         
+        // Get the current topic for relevance evaluation
+        const currentTopic = essayTopics.find(t => t.id === currentTopicId);
+        const topicText = currentTopic ? currentTopic.topic : 'Not specified';
+        
         const systemPrompt = `You are a strict IELTS Writing Task 2 examiner. Your task is to evaluate essays according to official IELTS criteria and identify ALL errors.
 
 IELTS ASSESSMENT CRITERIA:
-1. Task Response (25%): Does the essay fully address all parts of the task? Is there a clear position? Are ideas developed and supported?
-2. Coherence and Cohesion (25%): Is the essay logically organized? Are paragraphs used correctly? Are linking words used appropriately?
-3. Lexical Resource (25%): Is vocabulary varied and appropriate? Are there spelling errors? Is word formation correct?
-4. Grammatical Range and Accuracy (25%): Are sentences grammatically correct? Is there variety in sentence structures? Is punctuation correct?
+1. Task Response (25%): Does the essay fully address all parts of the task? Is there a clear position? Are ideas developed and supported? Is the essay RELEVANT to the given topic?
+2. Coherence and Cohesion (25%): Is the essay logically organized? Are paragraphs used correctly? Are linking words used appropriately? Do sentences and constructions make LOGICAL SENSE?
+3. Lexical Resource (25%): Is vocabulary varied and appropriate? Are there spelling errors? Is word formation correct? Are words used with correct MEANING in context?
+4. Grammatical Range and Accuracy (25%): Are sentences grammatically correct? Is there variety in sentence structures? Is punctuation correct? Are grammatical CONSTRUCTIONS appropriate for the context?
 
 YOUR TASK:
 1. First, check if the essay has at least 250 words. If not, this is a MAJOR error.
-2. Identify ALL grammar, spelling, punctuation, and logical errors.
-3. For each error, provide a CLEAR explanation referencing IELTS criteria.
-4. Be THOROUGH - missing errors hurts the student's preparation.
+2. Evaluate if the essay content is RELEVANT to the given topic prompt.
+3. Check if the MEANING of sentences is clear and logical.
+4. Assess whether grammatical CONSTRUCTIONS are appropriate for expressing the intended meaning.
+5. Identify ALL grammar, spelling, punctuation, and logical errors.
+6. For each error, provide a CLEAR explanation referencing IELTS criteria.
+7. Be THOROUGH - missing errors hurts the student's preparation.
 
 CRITICAL: 
 - Flag obvious grammar mistakes (subject-verb agreement, wrong tense, incorrect articles, wrong prepositions)
-- Flag spelling errors
+- Flag spelling errors (e.g., "likeing" should be "liking", "poop" when they mean "people")
 - Flag punctuation errors
-- Flag inappropriate word choice
+- Flag inappropriate word choice that changes meaning
 - Flag logical inconsistencies or contradictions
+- Flag sentences where the MEANING is unclear or nonsensical
+- Flag constructions that don't make sense in context (e.g., "i poop likeing being yesterday" - this is complete nonsense)
+- Flag if the essay goes OFF-TOPIC or doesn't address the given prompt
 - Flag if word count is below 250 words
-- DO NOT flag grammatically correct phrases like "need to do", "used to", "in order to", etc.`;
+- DO NOT flag grammatically correct phrases like "need to do", "used to", "in order to", etc.
+- If something looks wrong but you're not sure, still flag it with an explanation`;
 
         const userPrompt = `Evaluate this IELTS Writing Task 2 essay according to official IELTS criteria.
+
+TOPIC PROMPT: ${topicText}
 
 WORD COUNT REQUIREMENT: Minimum 250 words for Task 2.
 Current word count: ${wordCount} words (${wordCount < minWordCount ? 'BELOW MINIMUM' : 'OK'})
@@ -557,7 +590,7 @@ Return ONLY a valid JSON object with this exact structure:
         {
             "original_text": "the exact text with error",
             "suggestion": "corrected version",
-            "explanation": "CLEAR explanation of WHY this is an error and which IELTS criterion it affects (e.g., 'Grammatical Range & Accuracy: Subject-verb agreement error - plural subject requires plural verb')",
+            "explanation": "CLEAR explanation of WHY this is an error and which IELTS criterion it affects. Must explain: (1) what is wrong, (2) why it's wrong, (3) how it affects meaning/logic/relevance. Example: 'Task Response: This sentence is completely off-topic and does not address the given prompt about education. The phrase \"i poop likeing being yesterday\" makes no logical sense and is irrelevant to the essay topic.'",
             "start_index": 0,
             "end_index": 10,
             "error_type": "grammar"
@@ -572,22 +605,28 @@ Return ONLY a valid JSON object with this exact structure:
 
 Error types to identify:
 - "grammar": grammar mistakes (subject-verb agreement, wrong tense, incorrect articles, wrong prepositions, etc.)
-- "spelling": spelling errors and typos
+- "spelling": spelling errors and typos (e.g., "likeing" → "liking")
 - "punctuation": missing or incorrect punctuation
-- "vocabulary": wrong word choice, inappropriate register
-- "coherence": logical inconsistencies, poor linking
+- "vocabulary": wrong word choice, inappropriate register, words used with wrong meaning
+- "coherence": logical inconsistencies, poor linking, sentences that don't make sense
+- "meaning": sentences where the meaning is unclear, nonsensical, or illogical (e.g., "i poop likeing being yesterday")
+- "relevance": content that is off-topic or doesn't address the given prompt
 - "task_response": not addressing the task properly
 - "word_count": if below 250 words
+- "construction": grammatical constructions that are inappropriate for the intended meaning
 
 Rules:
 1. Return ONLY the JSON, no additional text before or after
 2. start_index and end_index are character positions in the original text (count from 0)
 3. If word count is below 250, MUST include an error with error_type "word_count"
 4. Be THOROUGH - identify ALL errors to help student improve
-5. Each error MUST have a clear, specific explanation
+5. Each error MUST have a clear, specific explanation that explains WHAT is wrong, WHY it's wrong, and HOW it affects meaning/logic/relevance
 6. Maximum 15 errors
 7. For grammatically correct phrases like "need to", "used to", "in order to" - do NOT flag them
-8. Include estimated band score for each criterion and overall`;
+8. Include estimated band score for each criterion and overall
+9. If you find nonsensical sentences like "i poop likeing being yesterday", flag them as "meaning" or "coherence" errors with explanation that the sentence makes no logical sense
+10. Check if the essay addresses the given TOPIC PROMPT - if content is off-topic, flag as "relevance" or "task_response" error
+11. Evaluate whether word choices convey the intended MEANING (e.g., if someone writes "poop" but means "people", flag it)`;
 
         const response = await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation', {
             method: 'POST',
@@ -671,6 +710,12 @@ Rules:
             // Filter out false positives - "need to" should never be flagged
             if (error.original_text.toLowerCase().includes('need to')) {
                 console.warn('Filtered out false positive for "need to":', error);
+                return false;
+            }
+            // Filter out false positives for other correct phrases
+            const correctPhrases = ['used to', 'in order to', 'have to', 'going to', 'want to'];
+            if (correctPhrases.some(phrase => error.original_text.toLowerCase().includes(phrase))) {
+                console.warn('Filtered out false positive for correct phrase:', error);
                 return false;
             }
             return true;

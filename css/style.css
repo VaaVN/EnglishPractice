@@ -932,6 +932,21 @@ body {
     color: white;
 }
 
+.error-type-badge.meaning {
+    background: #6610f2;
+    color: white;
+}
+
+.error-type-badge.relevance {
+    background: #fd7e14;
+    color: white;
+}
+
+.error-type-badge.construction {
+    background: #20c997;
+    color: white;
+}
+
 /* Error Tooltip */
 .error-tooltip {
     background: white;
