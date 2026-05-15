@@ -744,6 +744,194 @@ body {
     font-size: 1.1rem;
 }
 
+/* IELTS Evaluation Styles */
+.ielts-evaluation {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px;
+    padding: 25px;
+    margin-bottom: 25px;
+}
+
+.ielts-evaluation h4 {
+    color: white;
+    margin-bottom: 20px;
+    font-size: 1.3rem;
+}
+
+.word-count-info {
+    padding: 12px 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 1.1rem;
+}
+
+.word-count-info.ok {
+    background: rgba(40, 167, 69, 0.3);
+    border: 2px solid #28a745;
+}
+
+.word-count-info.warning {
+    background: rgba(220, 53, 69, 0.3);
+    border: 2px solid #dc3545;
+}
+
+.band-scores {
+    margin-bottom: 20px;
+}
+
+.overall-band {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.overall-band .label {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.overall-band .score {
+    font-size: 2rem;
+    font-weight: bold;
+    background: white;
+    color: #667eea;
+    padding: 5px 20px;
+    border-radius: 8px;
+}
+
+.criteria-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+}
+
+.criterion {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 12px;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.criterion .name {
+    display: block;
+    font-size: 0.85rem;
+    opacity: 0.9;
+    margin-bottom: 8px;
+}
+
+.criterion .score {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: bold;
+    background: white;
+    color: #667eea;
+    padding: 3px 10px;
+    border-radius: 6px;
+}
+
+.feedback-section {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.feedback-section h5 {
+    color: white;
+    font-size: 1rem;
+    margin: 15px 0 10px 0;
+}
+
+.feedback-section h5:first-child {
+    margin-top: 0;
+}
+
+.strengths-list,
+.improvements-list,
+.recommendations-list {
+    list-style: none;
+    padding-left: 0;
+}
+
+.strengths-list li,
+.improvements-list li,
+.recommendations-list li {
+    padding: 8px 0;
+    padding-left: 25px;
+    position: relative;
+    font-size: 0.95rem;
+}
+
+.strengths-list li::before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: #55efc4;
+    font-weight: bold;
+}
+
+.improvements-list li::before {
+    content: "⚠";
+    position: absolute;
+    left: 0;
+}
+
+.recommendations-list li::before {
+    content: "→";
+    position: absolute;
+    left: 0;
+    color: #ffeaa7;
+}
+
+.error-type-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.error-type-badge.word_count {
+    background: #dc3545;
+    color: white;
+}
+
+.error-type-badge.grammar {
+    background: #fd7e14;
+    color: white;
+}
+
+.error-type-badge.spelling {
+    background: #e83e8c;
+    color: white;
+}
+
+.error-type-badge.punctuation {
+    background: #20c997;
+    color: white;
+}
+
+.error-type-badge.vocabulary {
+    background: #6f42c1;
+    color: white;
+}
+
+.error-type-badge.coherence {
+    background: #17a2b8;
+    color: white;
+}
+
+.error-type-badge.task_response {
+    background: #dc3545;
+    color: white;
+}
+
 /* Error Tooltip */
 .error-tooltip {
     background: white;
