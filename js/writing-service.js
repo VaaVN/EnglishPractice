@@ -438,60 +438,40 @@ const WritingService = (function() {
         }
     }
 
-    // Generate demo errors based on actual text
+    // Generate demo errors based on actual text - ONLY real spelling/grammar mistakes
     function generateDemoErrorsForText(text) {
         const errors = [];
         const words = text.split(' ');
-        
-        // Find common mistakes in the text
+
+        // Find common REAL mistakes in the text - ONLY actual errors, NO style suggestions
         const commonMistakes = {
             'teh': 'the',
             'dont': "don't",
             'cant': "can't",
             'wont': "won't",
-            'its': "it's",
-            'your': "you're",
-            'there': "their",
-            'to': "too",
             'alot': "a lot",
             'recieve': "receive",
             'occured': "occurred",
-            'seperate': "separate"
+            'seperate': "separate",
+            'definately': "definitely",
+            'goverment': "government",
+            'becuase': "because",
+            'thier': "their",
+            'wierd': "weird",
+            'freind': "friend"
         };
 
         let currentIndex = 0;
         words.forEach((word, index) => {
             const lowerWord = word.toLowerCase().replace(/[^a-z]/g, '');
-            
-            // Check for common spelling mistakes
+
+            // Check for common spelling mistakes ONLY - no style suggestions
             if (commonMistakes[lowerWord]) {
                 const wordIndex = text.indexOf(word, currentIndex);
                 errors.push({
                     original_text: word,
                     suggestion: commonMistakes[lowerWord],
-                    explanation: `Spelling/grammar error: Consider using "${commonMistakes[lowerWord]}" instead`,
-                    start_index: wordIndex,
-                    end_index: wordIndex + word.length
-                });
-                currentIndex = wordIndex + word.length;
-            }
-            
-            // Add style suggestions for simple words
-            const simpleWords = ['good', 'bad', 'nice', 'big', 'small'];
-            const advancedAlternatives = {
-                'good': 'excellent/beneficial/advantageous',
-                'bad': 'detrimental/harmful/adverse',
-                'nice': 'pleasant/agreeable/enjoyable',
-                'big': 'substantial/considerable/significant',
-                'small': 'minimal/limited/modest'
-            };
-            
-            if (simpleWords.includes(lowerWord)) {
-                const wordIndex = text.indexOf(word, currentIndex);
-                errors.push({
-                    original_text: word,
-                    suggestion: advancedAlternatives[lowerWord],
-                    explanation: 'Vocabulary enhancement: Consider using more sophisticated vocabulary for academic writing',
+                    explanation: `Spelling error: '${lowerWord}' should be spelled '${commonMistakes[lowerWord]}`,
                     start_index: wordIndex,
                     end_index: wordIndex + word.length
                 });
@@ -499,14 +479,14 @@ const WritingService = (function() {
             }
         });
 
-        // If no errors found, add some generic suggestions
+        // If no errors found, provide a helpful message instead of fake errors
         if (errors.length === 0 && text.length > 50) {
             errors.push({
-                original_text: text.substring(0, 20),
-                suggestion: 'Consider adding a clear thesis statement',
-                explanation: 'Structure tip: Your introduction should clearly state your position on the topic',
+                original_text: text.substring(0, Math.min(30, text.length)),
+                suggestion: 'No obvious errors detected in this section',
+                explanation: 'Demo mode: This is a demonstration. In real mode with an API key, the AI would check for actual grammar, spelling, and logical errors.',
                 start_index: 0,
-                end_index: Math.min(20, text.length)
+                end_index: Math.min(30, text.length)
             });
         }
 
@@ -515,7 +495,28 @@ const WritingService = (function() {
 
     // Call Qwen API
     async function callQwenAPI(essayText) {
-        const prompt = `You are an English language examiner specializing in IELTS writing assessment. Analyze the following essay for grammar, vocabulary, and style errors.
+        const prompt = `You are an English language examiner specializing in IELTS writing assessment. Your task is to identify ONLY actual grammar, spelling, punctuation, and logical errors in the essay.
+
+CRITICAL RULES - READ CAREFULLY:
+1. ONLY flag text that contains REAL errors (grammar mistakes, spelling errors, wrong word usage, punctuation errors, logical inconsistencies)
+2. NEVER suggest changes to grammatically correct phrases. Common CORRECT phrases that should NOT be changed:
+   - "need to do", "needs to do", "needed to do" (NEVER change to "need too do")
+   - "used to" + verb (NEVER change to "use to")
+   - "in order to"
+   - "have to", "has to", "had to"
+   - "going to", "will" for future tense
+   - contractions like "don't", "can't", "won't", "it's" when used properly
+   - "there is/are", "there was/were" constructions
+   - "a lot" (two words) is correct in informal writing
+   - "make sure", "make sure that"
+   - "due to", "because of", "owing to"
+3. DO NOT change correct words just to make them "more sophisticated" - only fix actual mistakes
+4. If a phrase is grammatically correct, leave it alone even if you think there's a "better" way to say it
+5. FALSE POSITIVES TO AVOID AT ALL COSTS:
+   - "need to" is ALWAYS CORRECT (never flag it)
+   - Modal verbs + base verb (can do, should go, must be) are CORRECT
+   - Present simple for habits/facts is CORRECT
+   - Correct article usage (a/an/the) should NOT be flagged
 
 Return ONLY a valid JSON object with this exact structure:
 {
@@ -523,7 +524,7 @@ Return ONLY a valid JSON object with this exact structure:
         {
             "original_text": "the exact text with error",
             "suggestion": "corrected version",
-            "explanation": "brief explanation of the error",
+            "explanation": "brief explanation of WHY this is an error (e.g., 'Subject-verb agreement error', 'Wrong preposition', 'Spelling mistake')",
             "start_index": 0,
             "end_index": 10
         }
@@ -531,11 +532,18 @@ Return ONLY a valid JSON object with this exact structure:
 }
 
 Rules:
-1. Return ONLY the JSON, no additional text
-2. start_index and end_index are character positions in the original text
-3. Focus on: grammar mistakes, spelling errors, inappropriate vocabulary, style issues
-4. If no errors, return empty errors array
+1. Return ONLY the JSON, no additional text before or after
+2. start_index and end_index are character positions in the original text (count from 0)
+3. Focus ONLY on: 
+   - Grammar mistakes (subject-verb agreement, wrong tense, incorrect article usage, etc.)
+   - Spelling errors (typos, misspelled words)
+   - Punctuation errors (missing commas, periods, apostrophes)
+   - Wrong word choice (their/there, your/you're, to/too/two, etc.)
+   - Logical inconsistencies (contradictions in the text)
+4. If no errors found, return empty errors array: {"errors": []}
 5. Maximum 10 errors
+6. Be VERY conservative - only flag OBVIOUS errors, not style preferences
+7. When in doubt, DO NOT flag it
 
 Essay to check:
 ${essayText}`;
@@ -552,7 +560,7 @@ ${essayText}`;
                     messages: [
                         {
                             role: 'system',
-                            content: 'You are a helpful English writing assistant. Always respond with valid JSON only.'
+                            content: 'You are an English grammar checker. Your ONLY task is to identify real grammar, spelling, punctuation, and logical errors. NEVER suggest changes to grammatically correct phrases like "need to do", "used to", "in order to". NEVER change correct words to synonyms. If the text is correct, return empty errors array. Always respond with valid JSON only.'
                         },
                         {
                             role: 'user',
