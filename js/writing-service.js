@@ -471,7 +471,7 @@ const WritingService = (function() {
                 errors.push({
                     original_text: word,
                     suggestion: commonMistakes[lowerWord],
-                    explanation: `Spelling error: '${lowerWord}' should be spelled '${commonMistakes[lowerWord]}`,
+                    explanation: `Spelling error: '${lowerWord}' should be spelled '${commonMistakes[lowerWord]}'`,
                     start_index: wordIndex,
                     end_index: wordIndex + word.length
                 });
@@ -479,44 +479,31 @@ const WritingService = (function() {
             }
         });
 
-        // If no errors found, provide a helpful message instead of fake errors
-        if (errors.length === 0 && text.length > 50) {
-            errors.push({
-                original_text: text.substring(0, Math.min(30, text.length)),
-                suggestion: 'No obvious errors detected in this section',
-                explanation: 'Demo mode: This is a demonstration. In real mode with an API key, the AI would check for actual grammar, spelling, and logical errors.',
-                start_index: 0,
-                end_index: Math.min(30, text.length)
-            });
-        }
-
         return errors.slice(0, 5); // Limit to 5 errors for demo
     }
 
     // Call Qwen API
     async function callQwenAPI(essayText) {
-        const prompt = `You are an English language examiner specializing in IELTS writing assessment. Your task is to identify ONLY actual grammar, spelling, punctuation, and logical errors in the essay.
+        const systemPrompt = `You are a strict English grammar checker for IELTS essays. Your ONLY task is to identify REAL grammar, spelling, punctuation, and logical errors.
 
-CRITICAL RULES - READ CAREFULLY:
-1. ONLY flag text that contains REAL errors (grammar mistakes, spelling errors, wrong word usage, punctuation errors, logical inconsistencies)
-2. NEVER suggest changes to grammatically correct phrases. Common CORRECT phrases that should NOT be changed:
-   - "need to do", "needs to do", "needed to do" (NEVER change to "need too do")
-   - "used to" + verb (NEVER change to "use to")
-   - "in order to"
-   - "have to", "has to", "had to"
-   - "going to", "will" for future tense
-   - contractions like "don't", "can't", "won't", "it's" when used properly
-   - "there is/are", "there was/were" constructions
-   - "a lot" (two words) is correct in informal writing
-   - "make sure", "make sure that"
-   - "due to", "because of", "owing to"
-3. DO NOT change correct words just to make them "more sophisticated" - only fix actual mistakes
-4. If a phrase is grammatically correct, leave it alone even if you think there's a "better" way to say it
-5. FALSE POSITIVES TO AVOID AT ALL COSTS:
-   - "need to" is ALWAYS CORRECT (never flag it)
-   - Modal verbs + base verb (can do, should go, must be) are CORRECT
-   - Present simple for habits/facts is CORRECT
-   - Correct article usage (a/an/the) should NOT be flagged
+CRITICAL RULES:
+1. ONLY flag text that contains OBVIOUS errors (grammar mistakes, spelling errors, wrong word usage, punctuation errors, logical inconsistencies)
+2. NEVER suggest changes to grammatically correct phrases like:
+   - "need to do", "needs to do", "needed to do" - these are ALWAYS CORRECT
+   - "used to" + verb - ALWAYS CORRECT
+   - "in order to" - ALWAYS CORRECT
+   - "have to", "has to", "had to" - ALWAYS CORRECT
+   - Modal verbs + base verb (can do, should go, must be) - ALWAYS CORRECT
+   - Correct contractions (don't, can't, won't, it's) - ALWAYS CORRECT
+3. DO NOT change correct words to synonyms or "more sophisticated" alternatives
+4. If a phrase is grammatically correct, leave it alone
+5. When in doubt, DO NOT flag it - better to miss an error than create a false positive
+6. ALWAYS provide a clear explanation for WHY something is an error`;
+
+        const userPrompt = `Check this essay for REAL grammar, spelling, punctuation, and logical errors only.
+
+Essay to check:
+${essayText}
 
 Return ONLY a valid JSON object with this exact structure:
 {
@@ -542,11 +529,9 @@ Rules:
    - Logical inconsistencies (contradictions in the text)
 4. If no errors found, return empty errors array: {"errors": []}
 5. Maximum 10 errors
-6. Be VERY conservative - only flag OBVIOUS errors, not style preferences
-7. When in doubt, DO NOT flag it
-
-Essay to check:
-${essayText}`;
+6. Be VERY conservative - only flag OBVIOUS errors
+7. IMPORTANT: If you cannot provide a clear explanation for why something is wrong, do NOT flag it
+8. Double-check: if "need to" appears, it is ALWAYS CORRECT - never flag it`;
 
         const response = await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation', {
             method: 'POST',
@@ -560,11 +545,11 @@ ${essayText}`;
                     messages: [
                         {
                             role: 'system',
-                            content: 'You are an English grammar checker. Your ONLY task is to identify real grammar, spelling, punctuation, and logical errors. NEVER suggest changes to grammatically correct phrases like "need to do", "used to", "in order to". NEVER change correct words to synonyms. If the text is correct, return empty errors array. Always respond with valid JSON only.'
+                            content: systemPrompt
                         },
                         {
                             role: 'user',
-                            content: prompt
+                            content: userPrompt
                         }
                     ]
                 },
@@ -600,7 +585,28 @@ ${essayText}`;
         }
 
         const parsed = JSON.parse(jsonMatch[0]);
-        return parsed.errors || [];
+        
+        // Validate errors - filter out any that don't have proper explanations
+        const validErrors = (parsed.errors || []).filter(error => {
+            // Must have all required fields
+            if (!error.original_text || !error.suggestion || !error.explanation) {
+                console.warn('Filtered out error with missing fields:', error);
+                return false;
+            }
+            // Explanation must be meaningful (not empty or generic)
+            if (error.explanation.trim().length < 10) {
+                console.warn('Filtered out error with weak explanation:', error);
+                return false;
+            }
+            // Filter out false positives - "need to" should never be flagged
+            if (error.original_text.toLowerCase().includes('need to')) {
+                console.warn('Filtered out false positive for "need to":', error);
+                return false;
+            }
+            return true;
+        });
+        
+        return validErrors;
     }
 
     // Display errors interactively
@@ -629,15 +635,19 @@ ${essayText}`;
         // Display summary
         let summaryHTML = `<div class="results-summary">`;
         summaryHTML += `<h4>Analysis Results</h4>`;
-        summaryHTML += `<p>Found <strong>${errors.length}</strong> potential improvements</p>`;
+        summaryHTML += `<p>Found <strong>${errors.length}</strong> potential ${errors.length === 1 ? 'error' : 'errors'}</p>`;
         
         if (errors.length > 0) {
             summaryHTML += `<ul class="errors-list">`;
             errors.forEach((error, index) => {
+                const explanationText = error.explanation || 'Grammar issue detected';
                 summaryHTML += `
                     <li class="error-summary-item" data-error-index="${index}">
-                        <span class="error-original">"${error.original_text}"</span> 
-                        → <span class="error-suggestion">"${error.suggestion}"</span>
+                        <div class="error-details">
+                            <span class="error-original">"${error.original_text}"</span> 
+                            → <span class="error-suggestion">"${error.suggestion}"</span>
+                            <p class="error-explanation">${explanationText}</p>
+                        </div>
                         <button class="btn btn-tiny fix-btn" data-error-index="${index}">Fix</button>
                     </li>
                 `;
@@ -741,9 +751,10 @@ ${essayText}`;
 
         const tooltip = document.createElement('div');
         tooltip.className = 'error-tooltip';
+        const explanationText = error.explanation || 'Grammar issue detected';
         tooltip.innerHTML = `
             <div class="tooltip-content">
-                <p class="tooltip-explanation">${error.explanation}</p>
+                <p class="tooltip-explanation">${explanationText}</p>
                 <p class="tooltip-suggestion"><strong>Suggestion:</strong> ${error.suggestion}</p>
                 <button class="btn btn-primary btn-fix" data-error-index="${errorIndex}">Fix This</button>
             </div>
@@ -844,15 +855,19 @@ ${essayText}`;
             const errors = detectedErrors;
             let summaryHTML = `<div class="results-summary">`;
             summaryHTML += `<h4>Analysis Results</h4>`;
-            summaryHTML += `<p>Found <strong>${errors.length}</strong> potential improvements</p>`;
+            summaryHTML += `<p>Found <strong>${errors.length}</strong> potential ${errors.length === 1 ? 'error' : 'errors'}</p>`;
             
             if (errors.length > 0) {
                 summaryHTML += `<ul class="errors-list">`;
                 errors.forEach((error, index) => {
+                    const explanationText = error.explanation || 'Grammar issue detected';
                     summaryHTML += `
                         <li class="error-summary-item" data-error-index="${index}">
-                            <span class="error-original">"${error.original_text}"</span> 
-                            → <span class="error-suggestion">"${error.suggestion}"</span>
+                            <div class="error-details">
+                                <span class="error-original">"${error.original_text}"</span> 
+                                → <span class="error-suggestion">"${error.suggestion}"</span>
+                                <p class="error-explanation">${explanationText}</p>
+                            </div>
                             <button class="btn btn-tiny fix-btn" data-error-index="${index}">Fix</button>
                         </li>
                     `;
