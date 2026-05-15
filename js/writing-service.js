@@ -442,6 +442,19 @@ const WritingService = (function() {
     function generateDemoErrorsForText(text) {
         const errors = [];
         const words = text.split(' ');
+        const wordCount = text.trim().split(/\s+/).length;
+
+        // Check word count first - IELTS Task 2 requires 250+ words
+        if (wordCount < 250) {
+            errors.push({
+                original_text: `Word count: ${wordCount} words`,
+                suggestion: `Write at least 250 words (currently ${wordCount})`,
+                explanation: `Task Response: IELTS Writing Task 2 requires minimum 250 words. Your essay has only ${wordCount} words. This will significantly lower your score. Add more developed ideas, examples, and explanations.`,
+                start_index: 0,
+                end_index: 0,
+                error_type: "word_count"
+            });
+        }
 
         // Find common REAL mistakes in the text - ONLY actual errors, NO style suggestions
         const commonMistakes = {
@@ -458,7 +471,9 @@ const WritingService = (function() {
             'becuase': "because",
             'thier': "their",
             'wierd': "weird",
-            'freind': "friend"
+            'freind': "friend",
+            'likeing': "liking",
+            'poop': "pooped"
         };
 
         let currentIndex = 0;
@@ -471,67 +486,125 @@ const WritingService = (function() {
                 errors.push({
                     original_text: word,
                     suggestion: commonMistakes[lowerWord],
-                    explanation: `Spelling error: '${lowerWord}' should be spelled '${commonMistakes[lowerWord]}'`,
+                    explanation: `Spelling/Grammar error: '${lowerWord}' should be '${commonMistakes[lowerWord]}'`,
                     start_index: wordIndex,
-                    end_index: wordIndex + word.length
+                    end_index: wordIndex + word.length,
+                    error_type: "spelling"
                 });
                 currentIndex = wordIndex + word.length;
             }
         });
 
-        return errors.slice(0, 5); // Limit to 5 errors for demo
+        // Check for obvious grammar patterns
+        const grammarPatterns = [
+            { pattern: /\bi\s+am\s+agree\b/gi, suggestion: "I agree", explanation: "Grammar error: 'I am agree' is incorrect. Use 'I agree' or 'I am in agreement'." },
+            { pattern: /\bthere\s+is\s+many\b/gi, suggestion: "there are many", explanation: "Grammar error: Subject-verb agreement. 'Many' is plural, so use 'there are' not 'there is'." },
+            { pattern: /\bpeoples\b/gi, suggestion: "people", explanation: "Grammar error: 'People' is already plural. Don't add 's'." },
+            { pattern: /\badvices\b/gi, suggestion: "advice", explanation: "Grammar error: 'Advice' is uncountable. Don't add 's'." },
+            { pattern: /\binformations\b/gi, suggestion: "information", explanation: "Grammar error: 'Information' is uncountable. Don't add 's'." },
+            { pattern: /\bmore\s+better\b/gi, suggestion: "better", explanation: "Grammar error: 'Better' is already comparative. Don't use 'more' with it." },
+            { pattern: /\bmost\s+best\b/gi, suggestion: "best", explanation: "Grammar error: 'Best' is already superlative. Don't use 'most' with it." }
+        ];
+
+        grammarPatterns.forEach(({ pattern, suggestion, explanation }) => {
+            let match;
+            while ((match = pattern.exec(text)) !== null) {
+                errors.push({
+                    original_text: match[0],
+                    suggestion: suggestion,
+                    explanation: explanation,
+                    start_index: match.index,
+                    end_index: match.index + match[0].length,
+                    error_type: "grammar"
+                });
+            }
+        });
+
+        return errors.slice(0, 15); // Limit to 15 errors for demo
     }
 
     // Call Qwen API
     async function callQwenAPI(essayText) {
-        const systemPrompt = `You are a strict English grammar checker for IELTS essays. Your ONLY task is to identify REAL grammar, spelling, punctuation, and logical errors.
+        const wordCount = essayText.trim().split(/\s+/).length;
+        const minWordCount = 250;
+        
+        const systemPrompt = `You are a strict IELTS Writing Task 2 examiner. Your task is to evaluate essays according to official IELTS criteria and identify ALL errors.
 
-CRITICAL RULES:
-1. ONLY flag text that contains OBVIOUS errors (grammar mistakes, spelling errors, wrong word usage, punctuation errors, logical inconsistencies)
-2. NEVER suggest changes to grammatically correct phrases like:
-   - "need to do", "needs to do", "needed to do" - these are ALWAYS CORRECT
-   - "used to" + verb - ALWAYS CORRECT
-   - "in order to" - ALWAYS CORRECT
-   - "have to", "has to", "had to" - ALWAYS CORRECT
-   - Modal verbs + base verb (can do, should go, must be) - ALWAYS CORRECT
-   - Correct contractions (don't, can't, won't, it's) - ALWAYS CORRECT
-3. DO NOT change correct words to synonyms or "more sophisticated" alternatives
-4. If a phrase is grammatically correct, leave it alone
-5. When in doubt, DO NOT flag it - better to miss an error than create a false positive
-6. ALWAYS provide a clear explanation for WHY something is an error`;
+IELTS ASSESSMENT CRITERIA:
+1. Task Response (25%): Does the essay fully address all parts of the task? Is there a clear position? Are ideas developed and supported?
+2. Coherence and Cohesion (25%): Is the essay logically organized? Are paragraphs used correctly? Are linking words used appropriately?
+3. Lexical Resource (25%): Is vocabulary varied and appropriate? Are there spelling errors? Is word formation correct?
+4. Grammatical Range and Accuracy (25%): Are sentences grammatically correct? Is there variety in sentence structures? Is punctuation correct?
 
-        const userPrompt = `Check this essay for REAL grammar, spelling, punctuation, and logical errors only.
+YOUR TASK:
+1. First, check if the essay has at least 250 words. If not, this is a MAJOR error.
+2. Identify ALL grammar, spelling, punctuation, and logical errors.
+3. For each error, provide a CLEAR explanation referencing IELTS criteria.
+4. Be THOROUGH - missing errors hurts the student's preparation.
 
-Essay to check:
+CRITICAL: 
+- Flag obvious grammar mistakes (subject-verb agreement, wrong tense, incorrect articles, wrong prepositions)
+- Flag spelling errors
+- Flag punctuation errors
+- Flag inappropriate word choice
+- Flag logical inconsistencies or contradictions
+- Flag if word count is below 250 words
+- DO NOT flag grammatically correct phrases like "need to do", "used to", "in order to", etc.`;
+
+        const userPrompt = `Evaluate this IELTS Writing Task 2 essay according to official IELTS criteria.
+
+WORD COUNT REQUIREMENT: Minimum 250 words for Task 2.
+Current word count: ${wordCount} words (${wordCount < minWordCount ? 'BELOW MINIMUM' : 'OK'})
+
+Essay to evaluate:
 ${essayText}
 
 Return ONLY a valid JSON object with this exact structure:
 {
+    "word_count": ${wordCount},
+    "meets_word_requirement": ${wordCount >= minWordCount},
+    "overall_band_estimate": "6.0",
+    "criteria_scores": {
+        "task_response": "6.0",
+        "coherence_cohesion": "6.0", 
+        "lexical_resource": "6.0",
+        "grammatical_range_accuracy": "6.0"
+    },
     "errors": [
         {
             "original_text": "the exact text with error",
             "suggestion": "corrected version",
-            "explanation": "brief explanation of WHY this is an error (e.g., 'Subject-verb agreement error', 'Wrong preposition', 'Spelling mistake')",
+            "explanation": "CLEAR explanation of WHY this is an error and which IELTS criterion it affects (e.g., 'Grammatical Range & Accuracy: Subject-verb agreement error - plural subject requires plural verb')",
             "start_index": 0,
-            "end_index": 10
+            "end_index": 10,
+            "error_type": "grammar"
         }
-    ]
+    ],
+    "feedback": {
+        "strengths": ["list of strengths"],
+        "areas_for_improvement": ["list of areas to improve"],
+        "recommendations": ["specific recommendations for improvement"]
+    }
 }
+
+Error types to identify:
+- "grammar": grammar mistakes (subject-verb agreement, wrong tense, incorrect articles, wrong prepositions, etc.)
+- "spelling": spelling errors and typos
+- "punctuation": missing or incorrect punctuation
+- "vocabulary": wrong word choice, inappropriate register
+- "coherence": logical inconsistencies, poor linking
+- "task_response": not addressing the task properly
+- "word_count": if below 250 words
 
 Rules:
 1. Return ONLY the JSON, no additional text before or after
 2. start_index and end_index are character positions in the original text (count from 0)
-3. Focus ONLY on: 
-   - Grammar mistakes (subject-verb agreement, wrong tense, incorrect article usage, etc.)
-   - Spelling errors (typos, misspelled words)
-   - Punctuation errors (missing commas, periods, apostrophes)
-   - Wrong word choice (their/there, your/you're, to/too/two, etc.)
-   - Logical inconsistencies (contradictions in the text)
-4. If no errors found, return empty errors array: {"errors": []}
-5. Maximum 10 errors
-6. Be VERY conservative - only flag OBVIOUS errors
-7. IMPORTANT: If you cannot provide a clear explanation for why something is wrong, do NOT flag it
-8. Double-check: if "need to" appears, it is ALWAYS CORRECT - never flag it`;
+3. If word count is below 250, MUST include an error with error_type "word_count"
+4. Be THOROUGH - identify ALL errors to help student improve
+5. Each error MUST have a clear, specific explanation
+6. Maximum 15 errors
+7. For grammatically correct phrases like "need to", "used to", "in order to" - do NOT flag them
+8. Include estimated band score for each criterion and overall`;
 
         const response = await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation', {
             method: 'POST',
@@ -586,8 +659,22 @@ Rules:
 
         const parsed = JSON.parse(jsonMatch[0]);
         
+        // Add word count error if below minimum
+        let allErrors = [...(parsed.errors || [])];
+        
+        if (parsed.meets_word_requirement === false) {
+            allErrors.unshift({
+                original_text: `Word count: ${parsed.word_count} words`,
+                suggestion: `Write at least ${minWordCount} words (currently ${parsed.word_count})`,
+                explanation: `Task Response: IELTS Writing Task 2 requires minimum 250 words. Your essay has only ${parsed.word_count} words. This will significantly lower your score. Add more developed ideas, examples, and explanations.`,
+                start_index: 0,
+                end_index: 0,
+                error_type: "word_count"
+            });
+        }
+        
         // Validate errors - filter out any that don't have proper explanations
-        const validErrors = (parsed.errors || []).filter(error => {
+        const validErrors = allErrors.filter(error => {
             // Must have all required fields
             if (!error.original_text || !error.suggestion || !error.explanation) {
                 console.warn('Filtered out error with missing fields:', error);
@@ -605,6 +692,16 @@ Rules:
             }
             return true;
         });
+        
+        // Store full evaluation data including scores and feedback
+        window.lastEssayEvaluation = {
+            word_count: parsed.word_count,
+            meets_word_requirement: parsed.meets_word_requirement,
+            overall_band_estimate: parsed.overall_band_estimate,
+            criteria_scores: parsed.criteria_scores,
+            feedback: parsed.feedback,
+            errors: validErrors
+        };
         
         return validErrors;
     }
@@ -632,18 +729,73 @@ Rules:
 
         renderInteractiveText(textarea.value, errors);
 
-        // Display summary
+        // Display summary with IELTS scores and feedback
         let summaryHTML = `<div class="results-summary">`;
-        summaryHTML += `<h4>Analysis Results</h4>`;
+        
+        // Add IELTS evaluation section if available
+        const evaluation = window.lastEssayEvaluation;
+        if (evaluation) {
+            summaryHTML += `
+                <div class="ielts-evaluation">
+                    <h4>IELTS Writing Assessment</h4>
+                    <div class="word-count-info ${evaluation.meets_word_requirement ? 'ok' : 'warning'}">
+                        <strong>Word Count:</strong> ${evaluation.word_count} words 
+                        ${evaluation.meets_word_requirement ? '✓ (250+ required)' : `⚠ (Below minimum! Need ${250 - evaluation.word_count} more words)`}
+                    </div>
+                    <div class="band-scores">
+                        <div class="overall-band">
+                            <span class="label">Overall Band Estimate:</span>
+                            <span class="score">${evaluation.overall_band_estimate || 'N/A'}</span>
+                        </div>
+                        <div class="criteria-grid">
+                            <div class="criterion">
+                                <span class="name">Task Response</span>
+                                <span class="score">${evaluation.criteria_scores?.task_response || 'N/A'}</span>
+                            </div>
+                            <div class="criterion">
+                                <span class="name">Coherence & Cohesion</span>
+                                <span class="score">${evaluation.criteria_scores?.coherence_cohesion || 'N/A'}</span>
+                            </div>
+                            <div class="criterion">
+                                <span class="name">Lexical Resource</span>
+                                <span class="score">${evaluation.criteria_scores?.lexical_resource || 'N/A'}</span>
+                            </div>
+                            <div class="criterion">
+                                <span class="name">Grammar Range & Accuracy</span>
+                                <span class="score">${evaluation.criteria_scores?.grammatical_range_accuracy || 'N/A'}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="feedback-section">
+                        <h5>Strengths:</h5>
+                        <ul class="strengths-list">
+                            ${(evaluation.feedback?.strengths || []).map(s => `<li>${s}</li>`).join('')}
+                        </ul>
+                        <h5>Areas for Improvement:</h5>
+                        <ul class="improvements-list">
+                            ${(evaluation.feedback?.areas_for_improvement || []).map(a => `<li>${a}</li>`).join('')}
+                        </ul>
+                        <h5>Recommendations:</h5>
+                        <ul class="recommendations-list">
+                            ${(evaluation.feedback?.recommendations || []).map(r => `<li>${r}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+            `;
+        }
+        
+        summaryHTML += `<h4>Detailed Error Analysis</h4>`;
         summaryHTML += `<p>Found <strong>${errors.length}</strong> potential ${errors.length === 1 ? 'error' : 'errors'}</p>`;
         
         if (errors.length > 0) {
             summaryHTML += `<ul class="errors-list">`;
             errors.forEach((error, index) => {
                 const explanationText = error.explanation || 'Grammar issue detected';
+                const errorTypeBadge = error.error_type ? `<span class="error-type-badge">${error.error_type}</span>` : '';
                 summaryHTML += `
                     <li class="error-summary-item" data-error-index="${index}">
                         <div class="error-details">
+                            ${errorTypeBadge}
                             <span class="error-original">"${error.original_text}"</span> 
                             → <span class="error-suggestion">"${error.suggestion}"</span>
                             <p class="error-explanation">${explanationText}</p>
