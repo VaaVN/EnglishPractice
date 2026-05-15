@@ -91,7 +91,7 @@ const WritingService = (function() {
     let currentEssayText = '';
     let detectedErrors = [];
     // API Key stored only in memory (cleared on page refresh) - using global variable from main scope
-    // userApiKey is defined globally to be accessible by callQwenAPI
+    // userApiKey is defined globally to be accessible by callGeminiAPI
 
     // Initialize the writing section
     function init() {
@@ -399,7 +399,7 @@ const WritingService = (function() {
                 errors = generateDemoErrorsForText(textarea.value);
             } else {
                 // Real API call
-                errors = await callQwenAPI(textarea.value);
+                errors = await callGeminiAPI(textarea.value);
             }
 
             detectedErrors = errors;
@@ -464,7 +464,7 @@ const WritingService = (function() {
             { pattern: /\bi\s+was\b(?! going|doing|thinking|waiting|working|studying|living|staying|playing|reading|writing|eating|sleeping|talking|listening|watching|learning|teaching|cooking|cleaning|running|walking|driving|riding|flying|swimming|dancing|singing|crying|laughing|smiling|looking|seeing|hearing|feeling|touching|tasting|smelling|knowing|understanding|believing|remembering|forgetting|wanting|needing|liking|loving|hating|preferring|choosing|deciding|planning|hoping|expecting|wishing|dreaming|imagining|considering|suggesting|recommending|advising|warning|promising|threatening|refusing|agreeing|disagreeing|accepting|rejecting|approving|disapproving|allowing|forbidding|permitting|encouraging|discouraging|insisting|demanding|requesting|asking|answering|replying|responding|explaining|describing|narrating|telling|speaking|saying|mentioning|noting|observing|remarking|commenting|stating|declaring|announcing|proclaiming|reporting|confirming|denying|admitting|confessing|acknowledging|recognizing|realizing|discovering|finding|detecting|identifying|locating|searching|seeking|hunting|chasing|following|pursuing|tracking|tracing|investigating|examining|inspecting|checking|testing|trying|attempting|experimenting|practicing|training|exercising|working|laboring|toiling|struggling|striving|endeavoring|trying|attempting)/gi, explanation: "Grammar error: 'I was' must be followed by a verb in -ing form (past continuous) or used in passive voice. Check your sentence structure." }
         ];
 
-        nonsensePatterns.forEach(({ pattern, explanation }) => {
+        nonsensePhrases.forEach(({ pattern, explanation }) => {
             let match;
             while ((match = pattern.exec(text)) !== null) {
                 errors.push({
@@ -590,12 +590,17 @@ const WritingService = (function() {
         return errors;
     }
 
-    // Call Qwen API
-    async function callQwenAPI(essayText) {
+    // Call Google Gemini API
+    async function callGeminiAPI(essayText) {
         const topic = essayTopics.find(t => t.id === currentTopicId);
         const topicText = topic ? topic.topic : 'Unknown topic';
         const wordCount = essayText.trim().split(/\s+/).length;
         const minWordCount = 250;
+        
+        // Verify apiKey is available
+        if (!userApiKey) {
+            throw new Error('API key not set. Please enter your API key first.');
+        }
         
         const systemPrompt = `You are an EXTREMELY STRICT IELTS Writing Task 2 examiner. Your task is to evaluate essays according to official IELTS criteria and identify EVERY SINGLE error without exception.
 
@@ -721,49 +726,49 @@ Rules:
 9. Assign REALISTIC band scores based on errors found - multiple errors should result in lower scores (band 5-6 for many errors, band 7 for few errors, band 8-9 for almost no errors)
 10. DO NOT flag grammatically correct phrases like "need to", "used to", "in order to"
 11. If the essay is very short (<150 words), mention this severely impacts all scores`;
-        const response = await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation', {
+
+        const apiKey = userApiKey;
+        
+        // Use Google Gemini API endpoint
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+        
+        const response = await fetch(url, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${apiKey}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: 'qwen-turbo',
-                input: {
-                    messages: [
-                        {
-                            role: 'system',
-                            content: systemPrompt
-                        },
-                        {
-                            role: 'user',
-                            content: userPrompt
-                        }
-                    ]
-                },
-                parameters: {
-                    result_format: 'message'
+                contents: [{
+                    parts: [{
+                        text: systemPrompt + "\n\n" + userPrompt
+                    }]
+                }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    temperature: 0.1,
+                    topP: 0.8
                 }
             })
         });
 
         if (!response.ok) {
-            if (response.status === 401) {
-                throw new Error('Invalid API key. Please check your key and try again.');
+            if (response.status === 401 || response.status === 403) {
+                throw new Error('Invalid API key or permission denied. Please check your Gemini API key.');
             }
-            throw new Error(`API request failed with status ${response.status}`);
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(`API request failed with status ${response.status}: ${errorData.error?.message || 'Unknown error'}`);
         }
 
         const data = await response.json();
         
-        // Parse the response
+        // Parse Gemini response
         let content;
-        if (data.output && data.output.choices && data.output.choices[0]) {
-            content = data.output.choices[0].message.content;
-        } else if (data.output && data.output.text) {
-            content = data.output.text;
+        if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+            content = data.candidates[0].content.parts[0].text;
+        } else if (data.candidates && data.candidates[0] && data.candidates[0].text) {
+            content = data.candidates[0].text;
         } else {
-            throw new Error('Unexpected API response format');
+            throw new Error('Unexpected Gemini API response format');
         }
 
         // Extract JSON from response (in case there's extra text)
@@ -825,7 +830,7 @@ Rules:
         };
         
         return validErrors;
-    } // End of callQwenAPI
+    } // End of callGeminiAPI
 
     // Display errors interactively
     function displayErrors(errors) {
